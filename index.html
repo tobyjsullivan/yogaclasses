@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="stylesheets/base.css">
+	<link rel="stylesheet" href="stylesheets/skeleton.css">
+	<link rel="stylesheet" href="stylesheets/layout.css">
+	<script type='text/javascript' src='https://static.firebase.com/v0/firebase.js'></script>
+	<script type='text/javascript' src='jquery.js'></script>
+	<style>
+	input.error {
+		border: 2px #f00 solid;
+	}
+	</style>
+	<script type="text/javascript" language="javascript">
+	var db = new Firebase('https://yogaclasses.firebaseio.com/');
+	var classes = db.child('classes');
+	var studios = db.child('studios');
+	var styles = db.child('styles');
+
+	studios.on('child_added', function(studioSnapshot) {
+		listStudio(studioSnapshot.val(), studioSnapshot.name());
+	});
+
+	function listStudio(studio, name) {
+		var list = $('#studio-list');
+		list.append('<p>' + studio.name + ', ' + studio.address + '</p>');
+		$('#class-studio').append('<option value="'+name+'">'+studio.name+'</option>');
+	}
+
+	classes.on('child_added', function(classSnapshot) {
+		listClass(classSnapshot.val(), classSnapshot.name());
+	});
+
+	function listClass(_class, name) {
+		var list = $('#class-list');
+		studios.child(_class.studio).once('value', function(studioSnapshot){
+			styles.child(_class.style).once('value', function(styleSnapshot){
+				var studio = studioSnapshot.val();
+				var style = styleSnapshot.val();
+
+				list.append('<p>' + _class.day + ', ' + _class.time + ' - ' + style.name + ' @ ' + studio.name + '</p>');
+			});
+			
+		});
+	}
+
+	styles.on('child_added', function(styleSnapshot) {
+		listStyle(styleSnapshot.val(), styleSnapshot.name());
+	});
+
+	function listStyle(style, name) {
+		var list = $('#style-list');
+		list.append('<p>' + style.name + '</p>');
+
+		$('#class-style').append('<option value="'+name+'">'+style.name+'</option>');
+	}
+
+	function addStyle() {
+		setFieldHighlight($('#style-name'), false);
+
+		var style_name = $('#style-name').val();
+		if(style_name == '') {
+			setFieldHighlight($('#style-name'), true);
+			alert('Please provide a name for the style!');
+			return;
+		}
+
+		styles.push({name: style_name});	
+	}
+
+	function addStudio() {
+		setFieldHighlight($('#studio-name'), false);
+		setFieldHighlight($('#studio-address'), false);
+
+		var studio_name = $('#studio-name').val();
+		if(studio_name == '') {
+			setFieldHighlight($('#studio-name'), true);
+			alert('Please provide a name for the studio!');
+			return;
+		}
+
+		var studio_address = $('#studio-address').val();
+		if(studio_address == '') {
+			setFieldHighlight($('#studio-address'), true);
+			alert('Please provide a street address for the studio!');
+			return;
+		}
+
+		var studio_city = $('#studio-city').val();
+		var studio_url = $('#studio-url').val();
+		var studio_phone = $('#studio-phone').val();
+
+		var new_studio = {
+			name: studio_name,
+			address: studio_address,
+			city: studio_city,
+			url: studio_url,
+			phone: studio_phone
+		};
+
+		studios.push(new_studio);
+	}
+
+	function addClass() {
+		var class_studio = $('#class-studio').val();
+		var class_style = $('#class-style').val();
+		var class_day = $('#class-day').val();
+		var class_time = $('#class-time').val();
+
+		var new_class = {
+			studio: class_studio,
+			style: class_style,
+			day: class_day,
+			time: class_time
+		}
+
+		classes.push(new_class);
+	}
+
+	function setFieldHighlight(element, error) {
+		if(error) {
+			element.addClass('error');
+		} else {
+			element.removeClass('error');
+		}
+	}
+
+	function zeroFill( number, width )
+	{
+	  width -= number.toString().length;
+	  if ( width > 0 )
+	  {
+	    return new Array( width + (/\./.test( number ) ? 2 : 1) ).join( '0' ) + number;
+	  }
+	  return number + ""; // always return a string
+	}
+	</script>
+</head>
+<body>
+	<div class="container">
+		<div class="sixteen columns">
+			<h1>Vancouver Yoga Classes</h1>
+		</div>
+		<div class="ten columns">
+			<h3>Classes</h3>
+			<div id="class-list">
+
+			</div>
+
+			<h4>Add a New Class</h4>
+			<label for="class-studio">Studio</label>
+			<select id="class-studio">
+
+			</select>
+
+			<label for="class-style">Style</label>
+			<select id="class-style">
+
+			</select>
+
+			<label for="class-day">Day of Week</label>
+			<select id="class-day">
+				<option value="mon">Monday</option>
+				<option value="mon">Tuesday</option>
+				<option value="mon">Wednesday</option>
+				<option value="mon">Thursday</option>
+				<option value="mon">Friday</option>
+				<option value="mon">Saturday</option>
+				<option value="mon">Sunday</option>
+			</select>
+
+			<label for="class-time">
+				Start Time
+				<select id="class-time">
+
+				</select>
+				<script type="text/javascript" language="javascript">
+				for(var hour = 0; hour < 24; hour++) {
+					for(var minute = 0; minute < 60; minute += 15) {
+						var time = zeroFill(hour,2) + ':' + zeroFill( minute, 2);
+						var selected = '';
+						if(time == '07:00') {
+							selected = ' selected="selected"'
+						}
+						$('#class-time').append('<option value="'+time+'"'+selected+'>'+time+'</option>')
+					}
+				}
+				</script>
+			</label>
+
+			<input type="button" value="Add Class" onclick="javascript:addClass()" />
+		</div>
+
+		<div class="six columns">
+			<h3>Studios</h3>
+			<div id="studio-list">
+
+			</div>
+
+			<h4>Add a New Studio</h4>
+			<p><input type="text" id="studio-name" placeholder="Studio Name" /></p>
+			<p>
+				<input type="text" id="studio-address" placeholder="Street Address" />
+				<select id="studio-city">
+					<option value="burnaby">Burnaby, BC, Canada</option>
+					<option value="vancouver" selected="selected">Vancouver, BC, Canada</option>
+					<option value="north-vancouver">North Vancouver, BC, Canada</option>
+					<option value="new-westminster">New Westminster, BC, Canada</option>
+					<option value="richmond">Richmond, BC, Canada</option>
+					<option value="surrey">Surrey, BC, Canada</option>
+					<option value="west-vancouver">West Vancouver, BC, Canada</option>
+				</select>
+			</p>
+			<p>
+				Note: if the city of the studio is not listed, the studio cannot be added at this time.
+			</p>
+			<p>
+				<input type="text" id="studio-url" placeholder="Website URL" />
+				<input type="text" id="studio-phone" placeholder="Phone Number" />
+			</p>
+			<p><input type="button" id="add-studio" value="Add Studio" onclick="javascript:addStudio();" /></p>
+
+			<hr />
+
+			<h3>Styles</h3>
+			<div id="style-list">
+
+			</div>
+			<h4>Add a New Style</h4>
+			<input type="text" id="style-name" placeholder="Style Name" />
+			<input type="button" value="Add Style" onclick="javascript:addStyle()" />
+
+		</div>
+	</div>
+</body>
+</html>
